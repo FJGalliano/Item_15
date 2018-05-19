@@ -43,7 +43,7 @@ def index():
         return "Hello Belly Bottom Enthusiast"
 
 
-@app.route("/names")
+@app.route("/names", methods=["GET", "PUT"])
 def names():
     """Return a list of all sample names"""
     # Query all names
@@ -107,6 +107,14 @@ def sample(sample):
     # Query all OTU_ID and Sample Value
     results3 = session.query(Sample).statement
     df2 = pd.read_sql_query(results3, session.bind)
+    
+    #Find sample, if not show error
+    if sample not in df2.columns:
+        return jsonify(f"Error! Sample: (sample) Not Found!"), 400
+    
+    #Sample values greater than 1
+    df2 = df2[df2[sample] > 1]
+
     #Sort
     df2 = df2.sort_values(by=sample, ascending = 0)
 
@@ -118,8 +126,6 @@ def sample(sample):
 
     return jsonify(sample_data)
     
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)    
