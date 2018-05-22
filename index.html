@@ -8,42 +8,189 @@
     <meta name="author" content="Francisco Galliano">
     <title>Biodiversity</title>
     <!-- import plugin script -->  
-    <script src='static/Chart.min.js'></script> 
-    <link href="bootstrap.css" rel="stylesheet">
-    <!-- <link href="css/bootstrap.min.css" rel="stylesheet"> -->
-    <link href="style.css" rel="stylesheet">
-    <link href="http://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <link href="static/style.css" rel="stylesheet">
 </head>
 <body>
-    <h2>What's Living In Your Belly Button?</h2>
+    
 
     <div class="container">
-        <div class="jumbotron" style="text-align: center">
-            <select id="selDataset" type="dropdown-toggle" class="form-control" name="otu_id" onchange="optionChange(this.value)">
-                <option value = "{{results}}" SELECTED>{{result}}</option>
-            </select> 
+        <div class = "row">
+            <div class="col-md-12 jumbotron" style="text-align: center">
+                <h1><strong>What's Living In Your Belly Button?</strong></h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-2">
+                <div class="well">
+                    <h5> Select BB Sample:</h5>
+                    <select id="selDataset" onchange="optionChanged(this.value)"></select> 
+                </div>
+                <div class="panel panel-primary">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Sample MetaData</h3>
+                    </div>
+                    <div id="sample_Metadata" class="panel-body"></div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div id = "pie"></div>
+            </div>
+            <div class="col-md-5">
+                <div id = "gauge"></div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div id = "bubble"></div>
+        </div>
+    </div>
     
-    <div class="row">
-        <div class="col-md-12">
+    <script>
+            function updateMetaData(data){
+        // note
+                var PANEL = document.getElementById("sample_Metadata")
 
-    <div id="pie-chart"></div>
+        // note
+                PANEL.innerHTML = '';
 
-    <!-- <select name= "results" method="PUT" action="/names">
-        {% for result in results %}
-        <option value="{{results}}" SELECTED>{{result}}</option>"
-        {% endfor %} 
-    </select>       -->
-      
-              
+        // note
+        // note
+                for(var key in data){
+                    h6tag = document.createElement("h6");
+                    h6Text = document.createTextNode(`${key}:${data[key]}`);
+                    h6tag.append(h6Text);
+
+                    PANEL.appendChild(h6tag);
+                }
+            }
+            
+            function buildCharts(sampleData, otuData){
+        //note
+                var labels = sampleData[0]['otu_ids'].map(function(item){
+                    return otuData[item]
+                });
+
+                //note=Bubble Chart
+                var bubbleLayout = {
+                    margin: {t:0},
+                    hovermode: "closest",
+                    xaxis: {title: "OTU ID"}
+                };
+                var bubbleData = [{
+                    x: sampleData[0]["otu_ids"],
+                    y: sampleData[0]["sample_values"],
+                    text: labels,
+                    mode: "markers",
+                    marker:{
+                        size: sampleData[0]["sample_values"],
+                        color: sampleData[0]["otu_ids"],
+                        colorscale: "Earth",
+                    }
+                }];
+                var BUBBLE = document.getElementById("bubble");
+                Plotly.plot(BUBBLE, bubbleData, bubbleLayout);
+
+    //note=Pie Chart
+                console.log(sampleData[0]["sample_values"].slice(0,10))
+                var pieData = [{
+                    values: sampleData[0]["sample_values"].slice(0,10),
+                    labels: sampleData[0]["otu_ids"].slice(0,10),
+                    hovertext: labels.slice(0,10),
+                    hoverinfo: "hovertext",
+                    type: "pie"
+                }];
+
+                var pieLayout ={
+                    margin: {t:0, l:0}
+                };
+                var PIE = document.getElementById("pie");
+                Plotly.plot(PIE, pieData, pieLayout);
+            };
+
+            function updateCharts(sampleData, otuData){
+                var sampleValues = sampleData[0]["sample_values"];
+                var otuIDs = sampleData[0]["otu_ids"];
+
+    //note - OTU Descriptions
+                var labels = otuIDs.map(function(item){
+                    return otuData[item]
+                });
+
+    //note - Update Bubble Chart
+        var BUBBLE = document.getElementById("bubble");
+                Plotly.restyle(BUBBLE, "x", [otuIDs]);
+                Plotly.restyle(BUBBLE, "y", [sampleValues]);
+                Plotly.restyle(BUBBLE, "text", [labels]);
+                Plotly.restyle(BUBBLE, "marker.size", [sampleValues]);
+                Plotly.restyle(BUBBLE, "marker.color", [otuIDs]);
+            
+    //note - Update Pie Chart
+                var PIE = document.getElementById("pie");
+                var pieUpdate = {
+                    values: [sample_Values.slice(0,10)],
+                    labels: [otuIDs.slice(0,10)],
+                    hovertext: [labels.slice(0,10)],
+                    hoverinfo: "hovertext",
+                    type: "pie"
+                };
+                Plotly.restyle(PIE, pieUpdate);
+            }
+
+            function getData(sample, callback){
+                Plotly.d3.json(`/samples/${sample}`, function(error, sampleData) {
+                        if (error) return console.warn(error);
+
+                    Plotly.d3.json('/otu', function(error, otuData){
+                        if(error) return console.warn(error);
+                        callback(sampleData, otuData);  
+                    });
+                });
+
+                Plotly.d3.json(`/metadata/${sample}`, function(error, metaData){
+                        if (error) return console.warn(error);
+
+                        updateMetaData(metaData);
+                })
+
+    
+            }
+
+            function getOptions(){
+                var selector = document.getElementById('selDataset');
+                Plotly.d3.json('/names', function(error, sampleNames){
+                    for (var i=0; i < sampleNames.length; i++){
+                        var currentOption = document.createElement('option');
+                        currentOption.text = sampleNames[i];
+                        currentOption.value = sampleNames[i];
+                        selector.appendChild(currentOption);
+                    }
+
+                    getData(sampleNames[0], buildCharts);
+                })
+            }
+            function optionChanged(newSample){
+                    getData(newSample, updateCharts);
+            }
+            function init(){
+                    getOptions();
+            }   
+        
+            init();
+    
+
+
+    </script>    
         
     
     
     
     
-    <script src="belly.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-    <script src="http://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
-    
+    <!-- <script src="belly.js"></script> -->
+    <!-- <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="http://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script> -->
+    <!-- <select id="selDataset" type="dropdown-toggle" class="form-control" name="otu_id" onchange="optionChange(this.value)"> -->
+        
 </body>
 </html>

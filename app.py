@@ -8,7 +8,7 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 
 
 #################################################
@@ -40,10 +40,10 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-        return "Hello Belly Bottom Enthusiast"
+        return render_template("index.html")
 
 
-@app.route("/names", methods=["GET", "PUT"])
+@app.route('/names')
 def names():
     """Return a list of all sample names"""
     # Query all names
@@ -56,7 +56,7 @@ def names():
     return jsonify(list(df1.columns))
 
 
-@app.route("/otu")
+@app.route('/otu')
 def otus():
     """Return a list of OTU descriptions"""
     # Query all names
@@ -68,7 +68,7 @@ def otus():
     return jsonify(all_names)
 
 
-@app.route("/metadata/<sample>")
+@app.route('/metadata/<sample>')
 def metadata(sample):
     """Return a json dictionary of metadata"""
     # Query all OTUs
@@ -76,17 +76,17 @@ def metadata(sample):
     results = session.query(*sel).\
         filter(Metadata.SAMPLEID == sample[3:]).all()
     # Create a dictionary from the row data and append to a list of all_OTUs
-    all_Sample_Metadata = {}
+    all_sample_metadata = {}
     for result in results:
-        all_Sample_Metadata["AGE:"] = result[0]
-        all_Sample_Metadata["BBTYPE:"] = result[1]
-        all_Sample_Metadata["GENDER:"] = result[2]
-        all_Sample_Metadata["LOCATION:"] = result[3]
-        all_Sample_Metadata["SAMPLEID:"] = result[4]
-        all_Sample_Metadata["ETHNICITY:"] = result[5]
-    return jsonify(all_Sample_Metadata)
+        all_sample_metadata["AGE:"] = result[0]
+        all_sample_metadata["BBTYPE:"] = result[1]
+        all_sample_metadata["GENDER:"] = result[2]
+        all_sample_metadata["LOCATION:"] = result[3]
+        all_sample_metadata["SAMPLEID:"] = result[4]
+        all_sample_metadata["ETHNICITY:"] = result[5]
+    return jsonify(all_sample_metadata)
 
-@app.route("/wfreq/<sample>")
+@app.route('/wfreq/<sample>')
 def wfreq(sample):
     """ Returns an INTEGER value for weekly washing frequency"""
     # Query all frequencies
@@ -98,10 +98,10 @@ def wfreq(sample):
     for result in results:
         all_Sample_Wfreq["WFREQ:"] = result[0]
     # Convert list of tuples into normal list
-    # Metadata_wfreq = list(np.ravel(results))
+    
     return jsonify(all_Sample_Wfreq)
 
-@app.route("/sample/<sample>")
+@app.route('/samples/<sample>')
 def sample(sample):
     """ Returns a list of dictionaries of OTU_IDs and Sample_Values"""
     # Query all OTU_ID and Sample Value
@@ -110,7 +110,7 @@ def sample(sample):
     
     #Find sample, if not show error
     if sample not in df2.columns:
-        return jsonify(f"Error! Sample: (sample) Not Found!"), 400
+        return jsonify(f"Error! Sample: {sample} Not Found!"), 400
     
     #Sample values greater than 1
     df2 = df2[df2[sample] > 1]
